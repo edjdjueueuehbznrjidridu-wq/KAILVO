@@ -1,0 +1,65 @@
+name: Build APEX Native APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract project
+        run: |
+          set -e
+          if [ -f main.py ] && [ -f buildozer.spec ]; then
+            echo "already extracted"
+            exit 0
+          fi
+          ZIP=$(ls -1 *.zip 2>/dev/null | head -1)
+          echo "Using $ZIP"
+          unzip -o "$ZIP" -d _e
+          if [ -f _e/main.py ]; then
+            cp -a _e/. .
+          elif [ -f _e/APEX_SUPER_GitHub_Ready.zip ]; then
+            unzip -o _e/APEX_SUPER_GitHub_Ready.zip -d _p
+            if [ -f _p/main.py ]; then cp -a _p/. .; else
+              SUB=$(find _p -name main.py | head -1 | xargs dirname)
+              cp -a "$SUB"/. .
+            fi
+          else
+            SUB=$(find _e -name main.py | head -1 | xargs dirname)
+            cp -a "$SUB"/. .
+          fi
+          test -f main.py
+          test -f buildozer.spec
+          ls -la
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          sudo apt-get update -y
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+            git unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config \
+            zlib1g-dev libncurses5-dev libffi-dev libssl-dev cmake zip
+          pip install --upgrade pip wheel setuptools
+          pip install 'cython<3.0' buildozer
+
+      - name: Build APK
+        run: buildozer -v android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: APEX-Exchange-Native-APK
+          path: bin/*.apk
+          if-no-files-found: error
