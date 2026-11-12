@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +53,7 @@ jobs:
       - name: Install system packages
         run: |
           sudo apt-get update -y
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
             git unzip zip openjdk-17-jdk python3-pip python3-setuptools \
             autoconf automake libtool pkg-config cmake \
             zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 \
@@ -71,9 +71,7 @@ jobs:
       - name: Build APK
         env:
           BUILDOZER_WARN_ON_ROOT: "0"
-        run: |
-          # first run often downloads NDK/SDK — can take long
-          buildozer -v android debug
+        run: buildozer -v android debug
 
       - name: Show bin
         if: always()
